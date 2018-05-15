@@ -180,7 +180,8 @@ def read(fn, readdata=True, scale=True):
         
         # scale, offset and reshaping into segments
         if scale:
-            data = data * metadata['vertical_gain'] + metadata['vertical_offset']
+            data = data * metadata['vertical_gain']
+            data += metadata['vertical_offset']
 
         if metadata['subarray_count'] > 1:
             data = data.reshape(metadata['subarray_count'], -1)
@@ -190,25 +191,30 @@ def read(fn, readdata=True, scale=True):
         return metadata
         
         
-def pretty_metadata(metadata, filter=[]):
+def pretty_metadata(metadata, include=[]):
     """
-    pretty_metadata(metadata, filter=[])
-    ------------------------------------
     Pretty print a metadata dictionary.
-    filter:  List of keys to print. If empty, all keys are printed.
-             If 'main', selected useful entries are printed.
+
+    Parameters
+    ----------
+    metadata : dict
+        Lecroy metadata dictionary to print
+
+    include : list of strings
+        List of keys to print. If empty, all keys are printed.
+        If 'main', selected useful entries are printed.
     """
-    if filter == []:
+    if include == []:
         keys = metadata.keys()
-    elif filter == 'main':
-        keys = ['trigger_time', 'vert_coupling',
+    elif include == 'main':
+        keys = ['instrument_name', 'trigger_time', 'vert_coupling',
                 'time_base', 'horiz_interval', 'horiz_offset',
                 'fixed_vert_gain', 'vertical_gain', 'vertical_offset',
-                'wave_array1', 'subarray_count']
+                'wave_array_count', 'subarray_count']
     else:
-        keys = filter
+        keys = include
     
     for key in keys:
-        print(key, (20-len(key))*' ', metadata[key])
+        print(key, (20 - len(key)) * ' ', metadata[key])
     
     
