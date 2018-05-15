@@ -217,4 +217,23 @@ def pretty_metadata(metadata, include=[]):
     for key in keys:
         print(key, (20 - len(key)) * ' ', metadata[key])
     
-    
+
+class Trace:
+    def __init__(self, fn, readdata=True, scale=True):
+        self.fn = fn
+        self.readdata = readdata
+        self.scale = scale
+
+        self.metadata, self.trigtimes, self.data = read(fn, self.readdata,
+                                                        self.scale)
+        self.time = self.get_times()
+
+
+    def __repr__(self):
+        return pretty_metadata(self.metadata, 'main')
+
+    def get_times(self):
+        points = self.data.shape[-1]
+        dt = self.metadata['horiz_interval']
+        offset = self.metadata['horiz_offset']
+        return np.arange(points * dt + offset)
