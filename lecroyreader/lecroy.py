@@ -213,9 +213,12 @@ def pretty_metadata(metadata, include=[]):
                 'wave_array_count', 'subarray_count']
     else:
         keys = include
-    
+
+    s = ''
     for key in keys:
-        print(key, (20 - len(key)) * ' ', metadata[key])
+        s += '{:<20}{}\n'.format(key, metadata[key])
+
+    return s
     
 
 class Trace:
