@@ -1,11 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Dec 14 15:27:36 2010
-
-@author: Jonas
-"""
-
-from __future__ import print_function
 import numpy as np
 import struct
 
@@ -68,7 +60,40 @@ lecroy_format = { 'descriptor_name':   [0, '16s'],  # 16-character string
                 }
                 
     
-def read(fn, readdata=True, scale=True):    
+def read(fn, readdata=True, scale=True):
+    """
+    Read a single .trc binary Lecroy oscilloscope trace.
+
+    Parameters
+    ----------
+    fn : str
+        Path to file.
+    readdata : bool
+        Whether to read the actual data. If False, reads only metadata.
+    scale : bool
+        Whether to return the data samples in voltage units (scale=True) or
+        as unscaled integer values.
+
+    Returns
+    -------
+    metadata : dict
+        Metadata info contained in the trace file.
+    trigtimes : ndarray
+        In segmented mode, returns an array of trigger times for each segment.
+        In other modes, returns an empty string.
+
+        Only returned if `readdata=True`.
+    data : ndarray
+        Returns an array of float values (if `scale=True`) or integer values
+        (if `scale=False`) corresponding to the measured voltages.
+
+        In segmented mode, array is two-dimensional of size
+        (number of segments, points per segment).
+        In other modes, the array is one-dimensional.
+
+        Only returned if `readdata=True`.
+
+    """
     raw = open(fn, 'rb').read()
     
     startpos = raw.find(b'WAVEDESC')
@@ -77,7 +102,7 @@ def read(fn, readdata=True, scale=True):
     metadata = {}
     for field, val in lecroy_format.items():
         fieldlen = struct.Struct(val[1]).size
-        metadata[field] = raw[startpos + val[0] : startpos + val[0] + fieldlen] 
+        metadata[field] = raw[startpos + val[0]: startpos + val[0] + fieldlen]
             
     # byte order character, read from COMM_ORDER
     if struct.unpack('h', metadata['comm_order']) == 0:
@@ -127,13 +152,15 @@ def read(fn, readdata=True, scale=True):
     if tb == 100:
         metadata['time_base'] = 'external'
     else:
-        metadata['time_base'] = (str([1,2,5,10,20,50,100,200,500][tb%9]) + ' '
-                                 + ['p','n','u','m','','k'][tb//9] + 's/div')
+        tb_val = [1, 2, 5, 10, 20, 50, 100, 200, 500][tb % 9]
+        tb_prefix = ['p', 'n', 'u', 'm', '', 'k'][tb // 9]
+        metadata['time_base'] = '{} {}s/div'.format(tb_val, tb_prefix)
+
     fvt = metadata['fixed_vert_gain']
-    metadata['fixed_vert_gain'] = (str([1,2,5,10,20,50,100,200,500][fvt%9]) + ' '
-                                   + ['u','m','','k'][fvt//9] + 'V/div')
-    
-    
+    fvt_val = [1, 2, 5, 10, 20, 50, 100, 200, 500][fvt % 9]
+    fvt_prefix = ['u', 'm', '', 'k'][fvt // 9]
+    metadata['fixed_vert_gain'] = '{} {}V/div'.format(fvt_val, fvt_prefix)
+
     if readdata:
         # read the trigger times into a NumPy array
         trigtimes_startpos = (startpos + metadata['wave_descriptor'] +
@@ -148,13 +175,15 @@ def read(fn, readdata=True, scale=True):
         # read the binary data into a NumPy array
         data_startpos = trigtimes_startpos + metadata['trig_time_array']
         data = np.fromstring(raw[data_startpos:],
-                          dtype=number_type, count=metadata['wave_array1'])
+                             dtype=number_type,
+                             count=metadata['wave_array_count'])
         
         # scale, offset and reshaping into segments
         if scale:
             data = data * metadata['vertical_gain'] + metadata['vertical_offset']
-        
-        data = data.reshape(metadata['subarray_count'], -1)
+
+        if metadata['subarray_count'] > 1:
+            data = data.reshape(metadata['subarray_count'], -1)
         
         return metadata, trigtimes, data
     else:
