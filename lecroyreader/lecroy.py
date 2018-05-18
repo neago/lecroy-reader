@@ -239,4 +239,4 @@ class Trace:
         points = self.data.shape[-1]
         dt = self.metadata['horiz_interval']
         offset = self.metadata['horiz_offset']
-        return np.arange(points * dt + offset)
+        return np.arange(points) * dt + offset
